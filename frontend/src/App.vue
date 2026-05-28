@@ -24,6 +24,7 @@
     </main>
 
     <InstallPrompt />
+    <UpdatePrompt />
   </div>
 </template>
 
@@ -31,6 +32,7 @@
 import { useRouter } from 'vue-router';
 import { useAuthStore } from './stores/authStore';
 import InstallPrompt from './components/pwa/InstallPrompt.vue';
+import UpdatePrompt from './components/pwa/UpdatePrompt.vue';
 import { onMounted } from 'vue';
 
 const router = useRouter();
@@ -43,14 +45,9 @@ const handleLogout = () => {
 
 onMounted(() => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(
-      (registration) => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      },
-      (err) => {
-        console.log('ServiceWorker registration failed: ', err);
-      }
-    );
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Intentionally empty to prevent console noise on fail
+    });
   }
 });
 </script>

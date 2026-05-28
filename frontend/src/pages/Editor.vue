@@ -114,7 +114,9 @@ const loadData = async () => {
   try {
     const tRes = await fetch('/api/templates');
     if (tRes.ok) templates.value = await tRes.json();
-  } catch (e) { console.error('Failed to load templates', e); }
+  } catch (e) {
+    // ignore
+  }
 
   // Check for draft first
   const draft = loadDraft();
@@ -132,7 +134,9 @@ const loadData = async () => {
          alert(data.error || 'Failed to load page');
          router.push('/dashboard');
       }
-    } catch (e) { console.error('Failed to load page', e); }
+    } catch (e) {
+      // ignore
+    }
   }
 };
 

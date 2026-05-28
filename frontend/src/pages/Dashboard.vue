@@ -45,7 +45,6 @@ onMounted(async () => {
       pages.value = await res.json();
     }
   } catch (error) {
-    console.error('Failed to load pages', error);
   } finally {
     loading.value = false;
   }
