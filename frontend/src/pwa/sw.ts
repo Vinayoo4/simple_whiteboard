@@ -2,7 +2,7 @@
 
 const _self = self as any;
 
-const CACHE_NAME = 'flashfocus-cache-v1';
+const CACHE_NAME = 'businessos-cache-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

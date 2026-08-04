@@ -1,7 +1,11 @@
 import { expenseService } from '../modules/expenses/services/expenseService';
 import { partyService } from '../modules/parties/services/partyService';
+import { db } from './db';
 
 export async function seedData() {
+  const existing = await db.expenses.count();
+  if (existing > 0) return;
+
   const today = new Date();
   const d1 = new Date(today); d1.setDate(today.getDate() - 1);
   const d2 = new Date(today); d2.setDate(today.getDate() - 3);

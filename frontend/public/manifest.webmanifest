@@ -1,8 +1,8 @@
 {
-  "name": "FlashFocus",
-  "short_name": "FlashFocus",
-  "description": "Quickly create dynamic landing pages for dev projects using drag-and-drop blocks.",
-  "start_url": "/",
+  "name": "SALTEDHASH Business OS",
+  "short_name": "Business OS",
+  "description": "Local-first business insights: expenses, parties, and analytics.",
+  "start_url": "/insights",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",

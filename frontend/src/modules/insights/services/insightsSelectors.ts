@@ -11,6 +11,25 @@ import {
   InsightsFilterDTO
 } from '../api/dto';
 
+export interface OverviewContext {
+  parties?: PartyDTO[];
+  previousPeriodExpenses?: ExpenseDTO[];
+  anomalies?: AnomalyItemDTO[];
+}
+
+export function computePreviousRange(filter: InsightsFilterDTO): { rangeStart?: string; rangeEnd?: string } {
+  if (!filter.rangeStart || !filter.rangeEnd) return {};
+  const start = new Date(filter.rangeStart);
+  const end = new Date(filter.rangeEnd);
+  const spanMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - spanMs);
+  return {
+    rangeStart: new Date(prevStart).toISOString(),
+    rangeEnd: new Date(prevEnd).toISOString()
+  };
+}
+
 export class InsightsSelectors {
   static getValidExpenses(expenses: ExpenseDTO[], filter: InsightsFilterDTO): ExpenseDTO[] {
     return expenses.filter(e => {
@@ -26,12 +45,15 @@ export class InsightsSelectors {
     });
   }
 
-  static getOverview(expenses: ExpenseDTO[], filter: InsightsFilterDTO): InsightsOverviewDTO {
+  static getOverview(expenses: ExpenseDTO[], filter: InsightsFilterDTO, context: OverviewContext = {}): InsightsOverviewDTO {
     const valid = this.getValidExpenses(expenses, filter);
     let totalSpend = 0;
     let cash = 0;
     let digital = 0;
     const catTotals: Record<string, { name: string; total: number }> = {};
+    const partyTotals: Record<string, { name: string; total: number }> = {};
+    const parties = context.parties || [];
+    const partyMap = new Map(parties.map(p => [p.id, p]));
 
     valid.forEach(e => {
       totalSpend += e.amount;
@@ -40,18 +62,34 @@ export class InsightsSelectors {
 
       if (!catTotals[e.categoryId]) catTotals[e.categoryId] = { name: e.categoryName, total: 0 };
       catTotals[e.categoryId].total += e.amount;
+
+      if (e.partyId) {
+        const party = partyMap.get(e.partyId);
+        if (party) {
+          if (!partyTotals[e.partyId]) partyTotals[e.partyId] = { name: party.name, total: 0 };
+          partyTotals[e.partyId].total += e.amount;
+        }
+      }
     });
 
     let topCategory = null;
-    let max = -1;
+    let maxCat = -1;
     for (const [id, data] of Object.entries(catTotals)) {
-      if (data.total > max) {
-        max = data.total;
+      if (data.total > maxCat) {
+        maxCat = data.total;
         topCategory = { id, name: data.name, total: data.total };
       }
     }
 
-    // Approximate average daily spend based on range if provided, else on data points
+    let topParty = null;
+    let maxParty = -1;
+    for (const [id, data] of Object.entries(partyTotals)) {
+      if (data.total > maxParty) {
+        maxParty = data.total;
+        topParty = { id, name: data.name, total: data.total };
+      }
+    }
+
     let days = 1;
     if (filter.rangeStart && filter.rangeEnd) {
       days = Math.max(1, (new Date(filter.rangeEnd).getTime() - new Date(filter.rangeStart).getTime()) / (1000 * 3600 * 24));
@@ -62,6 +100,17 @@ export class InsightsSelectors {
        days = Math.max(1, (max - min) / (1000 * 3600 * 24));
     }
 
+    const previousTotal = (context.previousPeriodExpenses || [])
+      .filter(e => e.status !== 'voided')
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    let deltaVsPreviousPeriod = 0;
+    if (previousTotal > 0) {
+      deltaVsPreviousPeriod = ((totalSpend - previousTotal) / previousTotal) * 100;
+    } else if (totalSpend > 0) {
+      deltaVsPreviousPeriod = 100;
+    }
+
     return {
       rangeStart: filter.rangeStart || '',
       rangeEnd: filter.rangeEnd || '',
@@ -69,8 +118,10 @@ export class InsightsSelectors {
       transactionCount: valid.length,
       avgDailySpend: totalSpend / days,
       topCategory,
+      topParty,
       cashVsDigital: { cash, digital },
-      deltaVsPreviousPeriod: 0 // Mocking for now, requires fetching prior period
+      deltaVsPreviousPeriod,
+      pendingAlertsCount: context.anomalies ? context.anomalies.length : this.getAnomalies(expenses, filter).length
     };
   }
 
@@ -187,5 +238,24 @@ export class InsightsSelectors {
     });
 
     return anomalies.sort((a, b) => b.percentAboveAverage - a.percentAboveAverage);
+  }
+
+  static exportSummary(
+    expenses: ExpenseDTO[],
+    parties: PartyDTO[],
+    filter: InsightsFilterDTO,
+    previousPeriodExpenses?: ExpenseDTO[]
+  ): object {
+    const overview = this.getOverview(expenses, filter, { parties, previousPeriodExpenses });
+    return {
+      generatedAt: new Date().toISOString(),
+      filter,
+      overview,
+      categoryBreakdown: this.getCategoryBreakdown(expenses, filter),
+      paymentModeMix: this.getPaymentModeMix(expenses, filter),
+      trend: this.getTrend(expenses, filter, 'month'),
+      partySpend: this.getPartySpend(expenses, parties, filter),
+      anomalies: this.getAnomalies(expenses, filter)
+    };
   }
 }

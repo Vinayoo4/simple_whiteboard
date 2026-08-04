@@ -1,17 +1,14 @@
 {
-  "name": "saltedhash-flashfocus",
+  "name": "saltedhash-insights",
   "private": true,
   "version": "1.0.0",
   "workspaces": [
-    "frontend",
-    "backend"
+    "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
-    "build": "npm run build -w backend && npm run build -w frontend",
-    "start": "concurrently \"npm run start -w backend\" \"npm run preview -w frontend\""
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "test": "npm run test -w frontend",
+    "preview": "npm run preview -w frontend"
   }
 }

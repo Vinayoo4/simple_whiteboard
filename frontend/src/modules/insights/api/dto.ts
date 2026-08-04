@@ -5,8 +5,10 @@ export interface InsightsOverviewDTO {
   transactionCount: number;
   avgDailySpend: number;
   topCategory: { id: string; name: string; total: number } | null;
+  topParty: { id: string; name: string; total: number } | null;
   cashVsDigital: { cash: number; digital: number };
   deltaVsPreviousPeriod: number; // percentage
+  pendingAlertsCount: number;
 }
 
 export interface CategoryBreakdownItemDTO {

@@ -1,7 +1,7 @@
 <template>
   <div v-if="showInstallPrompt" class="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200 z-50 flex items-center gap-4">
     <div>
-      <h3 class="font-bold text-gray-900">Install FlashFocus</h3>
+      <h3 class="font-bold text-gray-900">Install Business OS</h3>
       <p class="text-sm text-gray-600">Install for a better experience</p>
     </div>
     <div class="flex gap-2">

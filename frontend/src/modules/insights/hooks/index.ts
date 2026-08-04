@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { insightsService } from '../services/insightsService';
+import { subscribeDataChanged } from '../../../shared/events';
 import {
   InsightsOverviewDTO,
   CategoryBreakdownItemDTO,
@@ -9,6 +10,8 @@ import {
   AnomalyItemDTO,
   InsightsFilterDTO
 } from '../api/dto';
+
+type Bucket = 'day' | 'week' | 'month';
 
 export function useInsightsFilter(initial: InsightsFilterDTO = {}) {
   const [filter, setFilter] = useState<InsightsFilterDTO>(() => {
@@ -60,144 +63,69 @@ function applyPreset(filter: InsightsFilterDTO): InsightsFilterDTO {
   return filter;
 }
 
-export function useInsightsOverview(filter: InsightsFilterDTO) {
-  const [data, setData] = useState<InsightsOverviewDTO | null>(null);
+interface AsyncState<T> {
+  data: T;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+function useAsync<T>(fetcher: () => Promise<T>, initial: T, deps: unknown[]): AsyncState<T> {
+  const [data, setData] = useState<T>(initial);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [refetchIndex, setRefetchIndex] = useState(0);
 
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  const refetch = useCallback(() => setRefetchIndex(i => i + 1), []);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    insightsService.getOverview(filter)
+    setError(null);
+    fetcher()
       .then(res => { if (active) setData(res); })
-      .catch(err => { if (active) setError(err); })
+      .catch(err => { if (active) setError(err as Error); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [filter, refetchIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, refetchIndex]);
 
-  return { data, loading, error };
+  useEffect(() => {
+    const onDataChanged = () => setRefetchIndex(i => i + 1);
+    const onFocus = () => setRefetchIndex(i => i + 1);
+    const unsubscribe = subscribeDataChanged(onDataChanged);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  return { data, loading, error, refetch };
+}
+
+export function useInsightsOverview(filter: InsightsFilterDTO) {
+  return useAsync(() => insightsService.getOverview(filter), null as InsightsOverviewDTO | null, [filter]);
 }
 
 export function useCategoryBreakdown(filter: InsightsFilterDTO) {
-  const [data, setData] = useState<CategoryBreakdownItemDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refetchIndex, setRefetchIndex] = useState(0);
-
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    insightsService.getCategoryBreakdown(filter)
-      .then(res => { if (active) setData(res); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter, refetchIndex]);
-
-  return { data, loading };
+  return useAsync(() => insightsService.getCategoryBreakdown(filter), [] as CategoryBreakdownItemDTO[], [filter]);
 }
 
 export function usePaymentModeMix(filter: InsightsFilterDTO) {
-  const [data, setData] = useState<PaymentModeMixDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refetchIndex, setRefetchIndex] = useState(0);
-
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    insightsService.getPaymentModeMix(filter)
-      .then(res => { if (active) setData(res); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter, refetchIndex]);
-
-  return { data, loading };
+  return useAsync(() => insightsService.getPaymentModeMix(filter), [] as PaymentModeMixDTO[], [filter]);
 }
 
-export function useInsightsTrend(filter: InsightsFilterDTO, bucket: 'day' | 'week' | 'month' = 'day') {
-  const [data, setData] = useState<TrendPointDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refetchIndex, setRefetchIndex] = useState(0);
-
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    insightsService.getTrend(filter, bucket)
-      .then(res => { if (active) setData(res); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter, bucket, refetchIndex]);
-
-  return { data, loading };
+export function useInsightsTrend(filter: InsightsFilterDTO, bucket: Bucket = 'day') {
+  return useAsync(() => insightsService.getTrend(filter, bucket), [] as TrendPointDTO[], [filter, bucket]);
 }
 
 export function usePartySpend(filter: InsightsFilterDTO) {
-  const [data, setData] = useState<PartySpendItemDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refetchIndex, setRefetchIndex] = useState(0);
-
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    insightsService.getPartySpend(filter)
-      .then(res => { if (active) setData(res); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter, refetchIndex]);
-
-  return { data, loading };
+  return useAsync(() => insightsService.getPartySpend(filter), [] as PartySpendItemDTO[], [filter]);
 }
 
 export function useAnomalies(filter: InsightsFilterDTO) {
-  const [data, setData] = useState<AnomalyItemDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refetchIndex, setRefetchIndex] = useState(0);
-
-  useEffect(() => {
-    const handleFocus = () => setRefetchIndex(i => i + 1);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    insightsService.getAnomalies(filter)
-      .then(res => { if (active) setData(res); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter, refetchIndex]);
-
-  return { data, loading };
+  return useAsync(() => insightsService.getAnomalies(filter), [] as AnomalyItemDTO[], [filter]);
 }
 
 export function useInsightsExport() {

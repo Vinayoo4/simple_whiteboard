@@ -1,34 +1,63 @@
-# SALTEDHASH FlashFocus
+# SALTEDHASH Business OS — Insights Module
 
-FlashFocus is a standalone PWA designed for solo founders to quickly create dynamic landing pages using drag-and-drop blocks.
-
-It is a lightweight, local-first product leveraging JSON file storage without the need for external database providers, offering an installable, mobile-first, offline-capable experience.
+Local-first business insights for SALTEDHASH Business OS. Expenses and parties live in IndexedDB (Dexie) on-device; the Insights module reads that data and computes analytics — it owns no primary data.
 
 ## Stack
-- Frontend: Vue 3, Vite, Tailwind CSS, Pinia, Vue Router
-- Backend: Express, Node.js, TypeScript
-- Storage: Local file-system JSON
+
+- Shell: Vue 3 + Vue Router
+- Insights UI: React 19 + TypeScript (bridged into the Vue shell via `ReactWrapper.vue`)
+- Styling: Tailwind CSS
+- Charts: Recharts
+- Storage: Dexie (IndexedDB), local-first, seeded on first run
+- Tests: Vitest + jsdom
 
 ## Setup & Run Locally
 
-1. Install dependencies from the root directory:
-   \`\`\`bash
-   npm install
-   \`\`\`
-2. Start both Frontend and Backend concurrently using the workspace scripts:
-   \`\`\`bash
-   npm run dev &
-   \`\`\`
+```bash
+npm install
+npm run dev
+```
 
-## Development
+Build and tests:
 
-- Frontend code is located in \`/frontend\`.
-- Backend code is located in \`/backend\`.
-- Shared code (types, utilities) is in \`/shared\`.
-- JSON Data is stored in \`/data\`.
+```bash
+npm run build
+npm test
+```
 
-## Features
-- Offline fallback page and Install Prompt (PWA).
-- Offline editor capabilities leveraging localStorage drafts.
-- Salted hash authentication natively handled with JSON data.
-- Drag-and-drop block based landing page builder.
+## Module Structure
+
+Insights follows a strict four-layer architecture (UI never touches storage directly):
+
+```
+modules/insights/
+  InsightsPage.tsx        # UI
+  hooks/                  # data hooks (useAsync + data-changed subscriptions)
+  services/
+    insightsService.ts    # IInsightsService orchestration
+    insightsSelectors.ts  # pure computation (no I/O, unit-tested)
+    insightsServiceFactory.ts
+    insightsDb.ts         # Dexie read access (only reachable via the service)
+  api/
+    dto.ts                # public DTOs
+```
+
+Source-of-truth modules:
+
+- `modules/expenses/services/expenseService.ts` — expense CRUD, `getExpenseSummary`, `paymentMode` filter
+- `modules/parties/services/partyService.ts` — party CRUD, `getPartyById`
+- `shared/events.ts` — `emitDataChanged` / `subscribeDataChanged` bus used for cross-module refresh
+
+## Routes
+
+- `/insights` — analytics dashboard (canonical; `/analytics`, `/reports`, `/dashboard-insights` redirect here)
+- `/expenses` — expense list (drill-down from insights)
+- `/expenses/:id` — expense detail
+- `/parties/:id` — party detail
+
+## Design Rules
+
+- Insights is a read-model: reads via `IInsightsService`, never writes primary data.
+- All math lives in pure selectors with tests (`insightsSelectors.test.ts`).
+- No mocks in the service layer; the module reads the real Dexie stores.
+- No caching — compute-on-read so data is always fresh.

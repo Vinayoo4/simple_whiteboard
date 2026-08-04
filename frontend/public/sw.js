@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flashfocus-v1';
+const CACHE_NAME = 'businessos-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
